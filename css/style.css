@@ -667,3 +667,271 @@ body {
 .footer { padding: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); margin-top: auto; color: var(--text-light); font-size: 0.82rem; }
 .footer-container { max-width: 1240px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
 .btn-text-sm { background: transparent; border: none; color: #a5b4fc; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+
+/* ==========================================================================
+   FEATURE ADDITIONS: TIMER, PROGRESSIVE DISCLOSURE, RUBRIC & SIDE-BY-SIDE
+   ========================================================================== */
+
+/* 1. Timer Badge UI */
+.timer-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+  color: #ffffff;
+  padding: 0.45rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+}
+
+.timer-time {
+  font-family: monospace, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+}
+
+.timer-time.warning-time {
+  background: #f43f5e;
+  color: #ffffff;
+  animation: pulseWarning 1s infinite alternate;
+}
+
+@keyframes pulseWarning {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+
+/* 2. Progressive Disclosure (Locked / Unlocked Zones) */
+.locked-zone {
+  position: relative;
+  opacity: 0.7;
+}
+
+.zone-lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(248, 250, 252, 0.82);
+  backdrop-filter: blur(4px);
+  border-radius: var(--radius-lg);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1.5rem;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.zone-lock-overlay i {
+  font-size: 2rem;
+  color: #8b5cf6;
+}
+
+.zone-lock-overlay.hidden {
+  display: none;
+}
+
+.unlocked-zone {
+  opacity: 1;
+}
+
+.anim-unlock {
+  animation: unlockZone 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes unlockZone {
+  0% {
+    opacity: 0.5;
+    transform: translateY(12px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 3. Student Self-Assessment Rubric Card (10-Point Max) */
+.self-rubric-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  box-shadow: var(--shadow-md);
+  border: 2px solid #e0f2fe;
+}
+
+.self-rubric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.self-rubric-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.self-rubric-title h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.self-rubric-score-badge {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #0369a1;
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #7dd3fc;
+}
+
+.self-rubric-score-badge strong {
+  font-size: 1.25rem;
+  color: #0284c7;
+}
+
+.self-rubric-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.self-rubric-items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .self-rubric-items-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.self-rubric-checkbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  user-select: none;
+}
+
+.self-rubric-checkbox-item:hover {
+  background: #f0f9ff;
+  border-color: #38bdf8;
+}
+
+.self-rubric-checkbox-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 0.1rem;
+  accent-color: #0ea5e9;
+  cursor: pointer;
+}
+
+.chk-label-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.item-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.item-pts {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0284c7;
+}
+
+/* 4. Teacher Dashboard Side-by-Side Comparison View */
+.side-by-side-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .side-by-side-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.side-box {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+
+.before-ai-box {
+  border-top: 4px solid #0ea5e9;
+  background: #f0f9ff;
+}
+
+.my-choice-box {
+  border-top: 4px solid #10b981;
+  background: #ecfdf5;
+}
+
+.side-box-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.step-badge {
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.step-badge.sec-1 { background: #0ea5e9; }
+.step-badge.sec-4 { background: #10b981; }
+
+.side-box-content {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #1e293b;
+  white-space: pre-wrap;
+  min-height: 90px;
+}
+

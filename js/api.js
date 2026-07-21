@@ -7,12 +7,17 @@ import { store } from './store.js';
 export const api = {
   /**
    * API 1: Request AI Support (action: "askAi")
-   * Payload: { action: "askAi", beforeAi: "...", myQuestion: "..." }
+   * Payload: { action: "askAi", subject, unit, prompt, beforeAi, myQuestion }
    */
-  async askAi(beforeAi, myQuestion) {
+  async askAi(beforeAi, myQuestion, assignment = null) {
     const url = store.getAppsScriptUrl();
+    const currentAss = assignment || store.getActiveAssignment();
+
     const payload = {
       action: "askAi",
+      subject: currentAss.subject || '',
+      unit: currentAss.unit || '',
+      prompt: currentAss.prompt || '',
       beforeAi: beforeAi,
       myQuestion: myQuestion
     };
@@ -47,15 +52,14 @@ export const api = {
       }
     }
 
-    // Fallback Mock AI Response Generator
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return this.generateMockAiAnswer(beforeAi, myQuestion);
+    // High-Sensitivity Context-Aware Fallback AI Response Generator
+    await new Promise(resolve => setTimeout(resolve, 800));
+    return this.generateMockAiAnswer(beforeAi, myQuestion, currentAss);
   },
 
   /**
    * API 2: Submit Final Trace (action: "submitTrace")
-   * Payload: { action: "submitTrace", rowArray: [학번, 이름, pwd, 1구역, 2구역, AI원본답변, 3구역요약, 4구역, 제출시간] }
-   * Columns A~I (Total 9 elements)
+   * Payload: { action: "submitTrace", rowArray: [학번, 이름, pwd, 1구역, 2구역, AI원본답변, 3구역요약, 4구역, selfScore, 제출시간] }
    */
   async submitTrace(studentInfo, traceData) {
     const url = store.getAppsScriptUrl();
@@ -65,7 +69,7 @@ export const api = {
     const pad = (n) => String(n).padStart(2, '0');
     const formattedDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-    // Exactly 9 elements matching Columns A~I in Google Sheet
+    // Exactly 10 elements matching Columns A~J in Google Sheet
     const rowArray = [
       studentInfo.studentId || '',       // A열: 학번
       studentInfo.name || '',            // B열: 이름
@@ -73,9 +77,10 @@ export const api = {
       traceData.beforeAi || '',          // D열: Before AI (1구역)
       traceData.myQuestion || '',        // E열: My Question (2구역)
       traceData.aiSupport || '',         // F열: 수신된 AI 원본 답변
-      traceData.studentSummary || '',    // G열: 학생 핵심 요약 (3구역/G열)
-      traceData.myChoice || '',          // H열: My Choice (4구역/H열)
-      formattedDate                      // I열: 제출시간 (YYYY-MM-DD HH:mm:ss)
+      traceData.studentSummary || '',    // G열: 학생 핵심 요약 (3구역)
+      traceData.myChoice || '',          // H열: My Choice (4구역)
+      traceData.selfScore ?? 10,         // J열 위치: 자기점검 합산 점수 (10점 만점)
+      formattedDate                      // 제출시간 (YYYY-MM-DD HH:mm:ss)
     ];
 
     const activeAss = store.getActiveAssignment();
@@ -118,7 +123,6 @@ export const api = {
 
   /**
    * API 3: Reset Backend Sheet Submissions Data (action: "resetSheet")
-   * Payload: { action: "resetSheet", sheetName: "단원명" }
    */
   async resetSheet(sheetName) {
     const url = store.getAppsScriptUrl();
@@ -156,35 +160,63 @@ export const api = {
   },
 
   /**
-   * Educational AI response simulation (Rich, Context-Aware, Sensitive Analysis)
+   * High-Sensitivity Educational AI Response Engine (Context-Aware Deep Feedback)
    */
-  generateMockAiAnswer(beforeAi, myQuestion) {
-    const q = (myQuestion || '').toLowerCase();
-    const b = (beforeAi || '').substring(0, 25);
+  generateMockAiAnswer(beforeAi, myQuestion, assignment = null) {
+    const subject = (assignment && assignment.subject) ? assignment.subject : '교과';
+    const unit = (assignment && assignment.unit) ? assignment.unit : '단원';
+    const prompt = (assignment && assignment.prompt) ? assignment.prompt : '탐구 과제';
 
-    let category = "일반 탐구";
-    if (q.includes("특허") || q.includes("출원") || q.includes("발명")) category = "특허 및 지식재산";
-    else if (q.includes("저작권") || q.includes("ai") || q.includes("인공지능")) category = "AI 윤리 및 저작권";
-    else if (q.includes("환경") || q.includes("탄소") || q.includes("에너지")) category = "환경 및 지속가능성";
+    const bText = (beforeAi || '').trim();
+    const qText = (myQuestion || '').trim();
 
-    let answer = `[AI 튜터 심층 입체 분석 - ${category} 분야]\n\n`;
-    answer += `💡 1. 학생 초기 생각("${b}...") 진단:\n`;
-    answer += `- 질문자님께서 문제 상황의 핵심을 타당하게 잘 짚어주셨습니다. 기존 접근의 한계를 고민하는 접근법이 훌륭합니다.\n\n`;
-
-    answer += `🔍 2. "${myQuestion}"에 대한 다각적 답변:\n`;
-    if (category === "특허 및 지식재산") {
-      answer += `- [핵심 절차 및 요건]: 특허 출원은 (선행기술 조사 ➡️ 명세서 작성 ➡️ 출원서 제출 ➡️ 심사청구) 4단계를 거칩니다. 기존 기술과의 '신규성'과 '진보성' 증명이 핵심입니다.\n`;
-      answer += `- [쟁점 및 대안]: 개인/소기업의 비용 부담과 기술 유출 우려가 있으므로 '실용신안' 등록이나 '공개특허' 제도를 비교 검토할 필요가 있습니다.\n`;
-    } else if (category === "AI 윤리 및 저작권") {
-      answer += `- [법적·사회적 관점]: 현재 저작권법은 '인간의 사상과 감정'만을 인정하므로 AI 단독 창작물은 저작권이 인정되지 않습니다.\n`;
-      answer += `- [기여도 판정 쟁점]: 그러나 인간이 프롬프트 조율 및 수정·선택 과정에 결정적 기여를 한 경우 부분적 창작성을 인정받을 수 있습니다.\n`;
-    } else {
-      answer += `- [다각적 관점 기술]: 단일 원인 분석을 넘어 기술적 효율성, 사용자 수용성, 법적·제도적 인프라의 종합적 균형이 필요합니다.\n`;
-      answer += `- [파급력 분석]: 적용 시 기대되는 이점과 반대로 발생 가능한 부작용(비용 증가, 안전성 검증)을 함께 비교해 보세요.\n`;
+    // Key topic analysis
+    let topicName = unit;
+    if (qText.includes("특허") || qText.includes("출원") || qText.includes("명세서") || qText.includes("발명")) {
+      topicName = "특허 출원 및 지식재산권";
+    } else if (qText.includes("저작권") || q.includes("ai") || qText.includes("창작")) {
+      topicName = "AI 생성물 저작권 및 인간의 창의성";
+    } else if (qText.includes("환경") || qText.includes("탄소") || qText.includes("세금")) {
+      topicName = "탄소세 및 환경 정책의 경제적 효과";
     }
 
-    answer += `\n⚖️ 3. 4구역(My Choice) 작성을 위한 성찰 질문:\n`;
-    answer += `- "위 분석 내용 중 내가 동의하는 부분과 추가로 고려할 가장 결정적인 기준은 무엇인가?"를 한 문장으로 정리해 보세요.`;
+    let answer = `[🤖 Gemini 튜터 심층 입체 피드백 - ${subject} > ${unit}]\n\n`;
+
+    answer += `🎯 1. 오늘의 탐구 과제 맥락 검토:\n`;
+    answer += `📌 과제: "${prompt}"\n\n`;
+
+    answer += `💡 2. 학생 1구역(Before AI) 초기 생각을 바탕으로 한 진단:\n`;
+    if (bText.length > 5) {
+      answer += `- 학생의 초기 생각: "${bText}"\n`;
+      answer += `- [피드백]: 학생께서 탐구 전 생각하신 방향은 문제 상황의 핵심 지점을 매우 직관적으로 잘 포착하고 있습니다! 특히 자신이 어떤 부분에서 생각이 멈췄는지 명확히 파악하고 계신 점이 훌륭합니다.\n`;
+      answer += `- [추가 고려할 점]: 다만, 한 단면뿐만 아니라 이 이슈가 가져올 사회적·법적·경제적 파급 효과까지 다각도로 확장해 볼 수 있습니다.\n\n`;
+    } else {
+      answer += `- 1구역에 탐구 전 본인의 기본 아이디어와 막힌 지점을 구체적으로 적어보시면 더욱 입체적인 AI 분석을 받으실 수 있습니다.\n\n`;
+    }
+
+    answer += `🔍 3. 학생 2구역 질문("${qText}")에 대한 맞춤 답변 & 다각적 관점:\n`;
+    if (qText.length > 3) {
+      answer += `- [핵심 해설 및 원리]: "${qText}"라는 질문은 이 탐구 주제의 핵심 쟁점을 건드리는 아주 날카로운 질문입니다.\n`;
+      
+      if (topicName.includes("특허")) {
+        answer += `  • 핵심 절차: 선행기술 조사 ➡️ 명세서 작성 ➡️ 출원서 제출 ➡️ 심사 청구 단계로 진행됩니다.\n`;
+        answer += `  • 관점 A (신규성·진보성 Focus): 기존 특허와의 기술적 차별성을 객관적 데이터로 입증하는 명세서 작성이 가장 결정적입니다.\n`;
+        answer += `  • 관점 B (경제성·권리화 Focus): 출원 비용과 심사 기간(약 1~1.5년)을 고려하여 실용신안 또는 공개특허 등록 여부를 전략적으로 선택해야 합니다.\n`;
+      } else if (topicName.includes("저작권")) {
+        answer += `  • 법적 기준: 현행 저작권법은 '인간의 사상이나 감정을 표현한 창작물'만을 인정합니다.\n`;
+        answer += `  • 관점 A (인간 주도론): AI는 지능적 도구에 불과하며, 프롬프트를 설계하고 최종 선택·수정한 인간에게 저작권이 귀속되어야 한다는 입장입니다.\n`;
+        answer += `  • 관점 B (공공재/신개념 권리론): AI 생성물은 무단 복제를 막되 저작권 기한을 단축하거나 별도의 'AI 인격권'을 도입해야 한다는 제안도 있습니다.\n`;
+      } else {
+        answer += `  • 긍정적 측면 (혜택): 문제 해결을 신속하게 유도하고 기술적·제도적 혁신을 촉진할 수 있습니다.\n`;
+        answer += `  • 수반되는 쟁점 (우려): 초기 도입 비용 발생, 기존 이해관계자와의 충돌, 사회적 합의 및 안전성 검증 절차가 수반됩니다.\n`;
+      }
+    } else {
+      answer += `- 2구역에 AI에게 구체적으로 궁금한 점이나 힌트를 요청하는 질문을 적어주세요.\n`;
+    }
+
+    answer += `\n⚖️ 4. 4구역(My Choice) 작성을 위한 비판적 성찰 가이드:\n`;
+    answer += `- 질문: "위 분석된 여러 관점 중, 내가 최종적으로 동의하는 선택은 무엇이며, 그렇게 판단한 가장 결정적인 이유는 무엇인가요?"\n`;
+    answer += `- Tip: 3구역 핵심 요약란에 위 AI 피드백 중 가장 와닿은 문장 1~2개를 요약한 후, 4구역에서 본인만의 주체적 판단을 완성해 보세요!`;
 
     return answer;
   }

@@ -22,6 +22,7 @@ class Store extends EventTarget {
         unit: '발명과 특허',
         prompt: '특허 출원 단계에 대해 설명할 수 있다.',
         sheetName: '발명과_특허',
+        timerEnabled: true,
         createdAt: '2026-07-20'
       },
       {
@@ -30,6 +31,7 @@ class Store extends EventTarget {
         unit: '2단원. AI 생성물과 지식재산권',
         prompt: '인공지능(AI)이 창작한 예술 작품 및 글의 저작권은 누구에게 인정되어야 하는가?',
         sheetName: 'AI생성물과_지식재산권',
+        timerEnabled: false,
         createdAt: '2026-07-20'
       }
     ];
@@ -45,6 +47,7 @@ class Store extends EventTarget {
       aiSupport: '',
       studentSummary: '',
       myChoice: '',
+      selfScore: 0,
       isSubmitted: false,
       submittedAt: null
     };
@@ -153,6 +156,7 @@ class Store extends EventTarget {
       aiSupport: '',
       studentSummary: '',
       myChoice: '',
+      selfScore: 0,
       isSubmitted: false,
       submittedAt: null
     };
@@ -190,7 +194,7 @@ class Store extends EventTarget {
     this.dispatchEvent(new CustomEvent('assignmentChange', { detail: this.getActiveAssignment() }));
   }
 
-  createAssignment(subject, unit, prompt) {
+  createAssignment(subject, unit, prompt, timerEnabled = true) {
     const id = 'ass_' + Date.now();
     const cleanUnit = unit.trim().replace(/[\/\?\\*\:\[\]]/g, '_').substring(0, 30) || ('과제_' + id);
     const newAss = {
@@ -199,6 +203,7 @@ class Store extends EventTarget {
       unit: unit.trim(),
       prompt: prompt.trim(),
       sheetName: cleanUnit,
+      timerEnabled: Boolean(timerEnabled),
       createdAt: new Date().toLocaleDateString('ko-KR')
     };
 
@@ -232,7 +237,7 @@ class Store extends EventTarget {
     this.updateThinkingTrace({ aiSupport: aiResponseText });
   }
 
-  markSubmitted() {
+  markSubmitted(selfScore = 10) {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const submittedAt = `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}. ${now.getHours() >= 12 ? '오후' : '오전'} ${now.getHours() % 12 || 12}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
@@ -240,6 +245,7 @@ class Store extends EventTarget {
     const activeAss = this.getActiveAssignment();
 
     this.updateThinkingTrace({
+      selfScore: selfScore,
       isSubmitted: true,
       submittedAt: submittedAt
     });
@@ -257,9 +263,9 @@ class Store extends EventTarget {
         myChoice: this.state.thinkingTrace.myChoice,
         submittedAt: submittedAt,
         rubric: {
-          selfScore: 10,
+          selfScore: Number(selfScore),
           teacherScore: 0,
-          totalScore: 10,
+          totalScore: Number(selfScore),
           teacherFeedback: '채점 대기 중'
         }
       };

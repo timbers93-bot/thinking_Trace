@@ -1,5 +1,5 @@
 /**
- * Thinking Trace - Student Activity View (4-Step Trace & Assignment Banner)
+ * Thinking Trace - Student Activity View (4-Step Trace, Timer, Progressive Disclosure & Self-Rubric)
  */
 
 import { store } from '../store.js';
@@ -12,6 +12,12 @@ export function renderStudentActivityView() {
 
   const container = document.createElement('div');
   container.className = 'activity-container';
+
+  // Check initial Progressive Disclosure state
+  const isUnlockedInitially = Boolean(trace.aiSupport || trace.isSubmitted);
+
+  // Check Timer status
+  const timerEnabled = assignment.timerEnabled !== false; // Default true unless explicitly false
 
   container.innerHTML = `
     <!-- Top Fixed Assignment Banner (교과목 > 단원명 > 오늘의 과제) -->
@@ -30,13 +36,20 @@ export function renderStudentActivityView() {
       </div>
     </div>
 
-    <!-- Student Activity Title & Status -->
+    <!-- Student Activity Title & Status & Timer -->
     <div class="activity-header-card" style="margin-top: 1rem;">
       <div class="activity-title">
         <h1><i class="fa-solid fa-brain-circuit" style="color: #0ea5e9;"></i> 사고 흔적(Thinking Trace) 기록</h1>
         <p>AI 연동 4단계 사고 프로세스를 통해 과제에 대한 나의 탐구 결론을 완성하세요.</p>
       </div>
-      <div class="student-meta">
+      <div class="student-meta" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <!-- 5-Minute Timer (ON/OFF Control) -->
+        <div id="assignment-timer" class="timer-badge ${timerEnabled ? '' : 'hidden'}" style="${timerEnabled ? '' : 'display: none;'}">
+          <i class="fa-solid fa-clock"></i>
+          <span class="timer-label">남은 시간:</span>
+          <span id="timer-display" class="timer-time">05:00</span>
+        </div>
+
         <div id="activity-status-badge" class="status-badge ${trace.isSubmitted ? 'submitted' : 'in-progress'}">
           <i class="fa-solid ${trace.isSubmitted ? 'fa-circle-check' : 'fa-clock-rotate-left'}"></i>
           <span>${trace.isSubmitted ? '최종 제출 완료 (' + (trace.submittedAt || '') + ')' : '작성 진행 중'}</span>
@@ -50,10 +63,10 @@ export function renderStudentActivityView() {
       <span>최종 제출이 완료되어 작성 양식이 <strong>읽기 전용(Read-only)</strong>으로 보호됩니다.</span>
     </div>
 
-    <!-- 4-Step Trace Grid -->
+    <!-- 4-Step Trace Grid with Progressive Disclosure -->
     <div class="trace-grid">
       
-      <!-- 1구역: Before AI -->
+      <!-- 1구역: Before AI (Always Unlocked) -->
       <div class="trace-card sec-1">
         <div class="trace-card-header">
           <div class="sec-step">1</div>
@@ -71,7 +84,7 @@ export function renderStudentActivityView() {
         >${trace.beforeAi || ''}</textarea>
       </div>
 
-      <!-- 2구역: My Question -->
+      <!-- 2구역: My Question (Always Unlocked) -->
       <div class="trace-card sec-2">
         <div class="trace-card-header">
           <div class="sec-step">2</div>
@@ -97,8 +110,13 @@ export function renderStudentActivityView() {
         </div>
       </div>
 
-      <!-- 3구역: AI Support & Student Summary -->
-      <div class="trace-card sec-3">
+      <!-- 3구역: AI Support & Student Summary (Progressive Disclosure - Disabled until AI requested) -->
+      <div id="sec-3-card" class="trace-card sec-3 ${isUnlockedInitially ? 'unlocked-zone' : 'locked-zone'}">
+        <div class="zone-lock-overlay ${isUnlockedInitially ? 'hidden' : ''}">
+          <i class="fa-solid fa-lock"></i>
+          <span>1, 2구역 작성 후 <strong>[AI 답변 요청]</strong>을 완료하면 부드럽게 해제됩니다.</span>
+        </div>
+
         <div class="trace-card-header">
           <div class="sec-step">3</div>
           <div class="sec-title-box">
@@ -126,13 +144,18 @@ export function renderStudentActivityView() {
             id="trace-sec-3-summary" 
             class="trace-textarea" 
             placeholder="AI 답변 내용 중 핵심 포인트를 1~2문장으로 읽고 요약해 보세요."
-            ${trace.isSubmitted ? 'disabled' : ''}
+            ${(trace.isSubmitted || !isUnlockedInitially) ? 'disabled' : ''}
           >${trace.studentSummary || ''}</textarea>
         </div>
       </div>
 
-      <!-- 4구역: My Choice -->
-      <div class="trace-card sec-4">
+      <!-- 4구역: My Choice (Progressive Disclosure - Disabled until AI requested) -->
+      <div id="sec-4-card" class="trace-card sec-4 ${isUnlockedInitially ? 'unlocked-zone' : 'locked-zone'}">
+        <div class="zone-lock-overlay ${isUnlockedInitially ? 'hidden' : ''}">
+          <i class="fa-solid fa-lock"></i>
+          <span>1, 2구역 작성 후 <strong>[AI 답변 요청]</strong>을 완료하면 부드럽게 해제됩니다.</span>
+        </div>
+
         <div class="trace-card-header">
           <div class="sec-step">4</div>
           <div class="sec-title-box">
@@ -145,10 +168,64 @@ export function renderStudentActivityView() {
           id="trace-sec-4" 
           class="trace-textarea" 
           placeholder="AI 답변과 나의 생각을 종합하여, 최종 선택 이유를 명확하게 작성해 보세요."
-          ${trace.isSubmitted ? 'disabled' : ''}
+          ${(trace.isSubmitted || !isUnlockedInitially) ? 'disabled' : ''}
         >${trace.myChoice || ''}</textarea>
       </div>
 
+    </div>
+
+    <!-- Student 10-Point Self-Assessment Rubric Checklist -->
+    <div class="self-rubric-card" style="margin-bottom: 1.5rem;">
+      <div class="self-rubric-header">
+        <div class="self-rubric-title">
+          <i class="fa-solid fa-clipboard-check" style="color: #0ea5e9;"></i>
+          <h3>학생 자기점검 체크리스트 (10점 만점)</h3>
+        </div>
+        <div class="self-rubric-score-badge">
+          <span>자기점검 점수:</span>
+          <strong id="self-score-val">0</strong>
+          <span>/ 10점</span>
+        </div>
+      </div>
+      <p class="self-rubric-desc">최종 제출 전 탐구 수행 과정을 스스로 성찰하고 평가 항목을 체크해 주세요.</p>
+
+      <div class="self-rubric-items-grid">
+        <label class="self-rubric-checkbox-item">
+          <input type="checkbox" id="chk-rubric-1" class="rubric-chk" data-score="3" ${trace.isSubmitted ? 'disabled' : ''} />
+          <span class="chk-box-custom"></span>
+          <div class="chk-label-text">
+            <span class="item-text">1. 내 생각이나 막힌 부분을 구체적으로 적었다.</span>
+            <span class="item-pts">(3점)</span>
+          </div>
+        </label>
+
+        <label class="self-rubric-checkbox-item">
+          <input type="checkbox" id="chk-rubric-2" class="rubric-chk" data-score="2" ${trace.isSubmitted ? 'disabled' : ''} />
+          <span class="chk-box-custom"></span>
+          <div class="chk-label-text">
+            <span class="item-text">2. 정답 대신 힌트나 예시를 요청했다.</span>
+            <span class="item-pts">(2점)</span>
+          </div>
+        </label>
+
+        <label class="self-rubric-checkbox-item">
+          <input type="checkbox" id="chk-rubric-3" class="rubric-chk" data-score="2" ${trace.isSubmitted ? 'disabled' : ''} />
+          <span class="chk-box-custom"></span>
+          <div class="chk-label-text">
+            <span class="item-text">3. AI 도움을 전체 복사하지 않고 요약했다.</span>
+            <span class="item-pts">(2점)</span>
+          </div>
+        </label>
+
+        <label class="self-rubric-checkbox-item">
+          <input type="checkbox" id="chk-rubric-4" class="rubric-chk" data-score="3" ${trace.isSubmitted ? 'disabled' : ''} />
+          <span class="chk-box-custom"></span>
+          <div class="chk-label-text">
+            <span class="item-text">4. 선택한 이유를 내 말로 바꾸어 분명히 적었다.</span>
+            <span class="item-pts">(3점)</span>
+          </div>
+        </label>
+      </div>
     </div>
 
     <!-- Bottom Action Footer Bar -->
@@ -185,14 +262,89 @@ export function renderStudentActivityView() {
   // References
   const sec1 = container.querySelector('#trace-sec-1');
   const sec2 = container.querySelector('#trace-sec-2');
+  const sec3Card = container.querySelector('#sec-3-card');
   const sec3Ai = container.querySelector('#trace-sec-3-ai');
   const sec3Summary = container.querySelector('#trace-sec-3-summary');
+  const sec4Card = container.querySelector('#sec-4-card');
   const sec4 = container.querySelector('#trace-sec-4');
+
   const btnAskAi = container.querySelector('#btn-ask-ai');
   const askAiText = container.querySelector('#ask-ai-text');
   const btnSubmitTrace = container.querySelector('#btn-submit-trace');
   const readonlyBanner = container.querySelector('#readonly-info-banner');
   const statusBadge = container.querySelector('#activity-status-badge');
+  const timerDisplay = container.querySelector('#timer-display');
+  const selfScoreValSpan = container.querySelector('#self-score-val');
+  const rubricCheckboxes = container.querySelectorAll('.rubric-chk');
+
+  // --- 1. 5-Minute Countdown Timer Logic ---
+  let timerInterval = null;
+  let remainingSeconds = 300; // 5 minutes
+
+  if (timerEnabled && !trace.isSubmitted) {
+    const updateTimerUI = () => {
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = remainingSeconds % 60;
+      if (timerDisplay) {
+        timerDisplay.innerText = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        if (remainingSeconds <= 60) {
+          timerDisplay.classList.add('warning-time');
+        }
+      }
+    };
+
+    updateTimerUI();
+
+    timerInterval = setInterval(() => {
+      remainingSeconds--;
+      if (remainingSeconds <= 0) {
+        remainingSeconds = 0;
+        updateTimerUI();
+        clearInterval(timerInterval);
+        if (window.showToast) {
+          window.showToast('제출 시간(5분)이 만료되었습니다. 작성하신 사고 흔적을 바로 제출해 주세요!', 'info');
+        }
+      } else {
+        updateTimerUI();
+      }
+    }, 1000);
+  }
+
+  // --- 2. Self-Assessment Rubric Score Calculation ---
+  const calculateSelfScore = () => {
+    let sum = 0;
+    rubricCheckboxes.forEach(chk => {
+      if (chk.checked) {
+        sum += parseInt(chk.getAttribute('data-score')) || 0;
+      }
+    });
+    if (selfScoreValSpan) {
+      selfScoreValSpan.innerText = sum;
+    }
+    return sum;
+  };
+
+  // Pre-check checkboxes based on saved selfScore or default logic
+  const savedSelfScore = trace.selfScore || 0;
+  if (savedSelfScore >= 10 || (!trace.isSubmitted && savedSelfScore === 0)) {
+    // Default check all if clean or full score
+    rubricCheckboxes.forEach(chk => chk.checked = true);
+  } else {
+    // Check based on target score matching
+    let tempSum = 0;
+    rubricCheckboxes.forEach(chk => {
+      const pts = parseInt(chk.getAttribute('data-score')) || 0;
+      if (tempSum + pts <= savedSelfScore) {
+        chk.checked = true;
+        tempSum += pts;
+      }
+    });
+  }
+  calculateSelfScore();
+
+  rubricCheckboxes.forEach(chk => {
+    chk.addEventListener('change', calculateSelfScore);
+  });
 
   // Auto-resize helper function
   const autoResize = (el) => {
@@ -211,7 +363,8 @@ export function renderStudentActivityView() {
       beforeAi: sec1.value,
       myQuestion: sec2.value,
       studentSummary: sec3Summary.value,
-      myChoice: sec4.value
+      myChoice: sec4.value,
+      selfScore: calculateSelfScore()
     });
   };
 
@@ -222,7 +375,7 @@ export function renderStudentActivityView() {
 
   setTimeout(applyAutoResizeAll, 100);
 
-  // Handle API 1: askAi
+  // --- 3. Handle API 1: askAi & Progressive Disclosure Unlock ---
   btnAskAi.addEventListener('click', async () => {
     const beforeAiVal = sec1.value.trim();
     const myQuestionVal = sec2.value.trim();
@@ -243,11 +396,23 @@ export function renderStudentActivityView() {
     askAiText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Apps Script AI 분석 중...';
 
     try {
-      const aiReply = await api.askAi(beforeAiVal, myQuestionVal);
+      const aiReply = await api.askAi(beforeAiVal, myQuestionVal, assignment);
       sec3Ai.innerHTML = aiReply.replace(/\n/g, '<br>');
       store.setAiResponse(aiReply);
+
+      // --- Progressive Disclosure: Smooth Unlock Animation ---
+      [sec3Card, sec4Card].forEach(card => {
+        card.classList.remove('locked-zone');
+        card.classList.add('unlocked-zone', 'anim-unlock');
+        const overlay = card.querySelector('.zone-lock-overlay');
+        if (overlay) overlay.classList.add('hidden');
+      });
+
+      sec3Summary.disabled = false;
+      sec4.disabled = false;
+
       applyAutoResizeAll();
-      window.showToast('AI 답변이 3구역에 수신되었습니다!', 'success');
+      window.showToast('AI 답변이 3구역에 수신되었으며 3, 4구역이 해제되었습니다!', 'success');
     } catch (err) {
       window.showToast('AI 답변 요청 중 에러가 발생했습니다.', 'error');
     } finally {
@@ -256,10 +421,11 @@ export function renderStudentActivityView() {
     }
   });
 
-  // Handle API 2: submitTrace
+  // --- 4. Handle API 2: submitTrace ---
   btnSubmitTrace.addEventListener('click', async () => {
     syncToStore();
     const currentTrace = store.getThinkingTrace();
+    const finalSelfScore = calculateSelfScore();
 
     if (!sec1.value.trim() || !sec2.value.trim()) {
       window.showToast('1구역 및 2구역을 작성해 주세요.', 'error');
@@ -277,6 +443,8 @@ export function renderStudentActivityView() {
       return;
     }
 
+    if (timerInterval) clearInterval(timerInterval);
+
     btnSubmitTrace.disabled = true;
     btnSubmitTrace.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 백엔드 전송 중...';
 
@@ -286,10 +454,11 @@ export function renderStudentActivityView() {
         myQuestion: sec2.value,
         aiSupport: currentTrace.aiSupport,
         studentSummary: sec3Summary.value,
-        myChoice: sec4.value
+        myChoice: sec4.value,
+        selfScore: finalSelfScore
       });
 
-      store.markSubmitted();
+      store.markSubmitted(finalSelfScore);
 
       // Lock forms (Read-only)
       sec1.disabled = true;
@@ -297,6 +466,7 @@ export function renderStudentActivityView() {
       sec3Summary.disabled = true;
       sec4.disabled = true;
       btnAskAi.disabled = true;
+      rubricCheckboxes.forEach(chk => chk.disabled = true);
 
       readonlyBanner.classList.remove('hidden');
       readonlyBanner.style.display = 'flex';
@@ -305,7 +475,7 @@ export function renderStudentActivityView() {
       
       btnSubmitTrace.innerHTML = '<i class="fa-solid fa-check-double"></i> <span>최종 제출 완료</span>';
 
-      window.showToast('사고 흔적이 백엔드 구글 시트에 최종 제출되었습니다!', 'success');
+      window.showToast('사고 흔적 및 자기점검 점수가 백엔드 구글 시트에 제출되었습니다!', 'success');
 
       setTimeout(() => {
         window.location.reload();
@@ -333,6 +503,7 @@ export function renderStudentActivityView() {
   if (btnResetTrace) {
     btnResetTrace.addEventListener('click', () => {
       if (confirm('작성 중인 모든 사고 흔적(1~4구역)을 삭제하고 새로 작성하시겠습니까?')) {
+        if (timerInterval) clearInterval(timerInterval);
         store.resetThinkingTrace();
         window.showToast('사고 흔적이 깔끔하게 초기화되었습니다.', 'info');
         window.location.reload();

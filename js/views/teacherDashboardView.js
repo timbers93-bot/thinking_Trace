@@ -1,5 +1,5 @@
 /**
- * Thinking Trace - Teacher Dashboard View (Per-Teacher Apps Script URL & Save As New Assignment)
+ * Thinking Trace - Teacher Dashboard View (Per-Teacher Apps Script URL, Timer Control & Side-by-Side View)
  */
 
 import { store } from '../store.js';
@@ -100,9 +100,20 @@ export function renderTeacherDashboardView() {
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 1.25rem;">
+          <div class="form-group" style="margin-bottom: 1rem;">
             <label for="ass-prompt"><i class="fa-solid fa-circle-question"></i> 3. 학생들이 수행할 과제/질문 입력</label>
             <textarea id="ass-prompt" class="trace-textarea" style="min-height: 80px;" placeholder="학생들이 4단계 사고 흔적을 통해 해결할 핵심 탐구 질문을 입력하세요." required>${isNewMode ? '' : (currentSelectedAss.prompt || '')}</textarea>
+          </div>
+
+          <!-- Timer Control Option (Requirement 1) -->
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="ass-timer-enabled" style="cursor: pointer; display: inline-flex; align-items: center; gap: 0.6rem; user-select: none; background: #f8fafc; padding: 0.65rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%;">
+              <input type="checkbox" id="ass-timer-enabled" style="width: 18px; height: 18px; cursor: pointer;" ${isNewMode || currentSelectedAss.timerEnabled !== false ? 'checked' : ''} />
+              <span style="font-size: 0.9rem; color: #1e293b;">
+                <i class="fa-solid fa-stopwatch" style="color: #0ea5e9;"></i>
+                <strong>5분 타이머 작동 (ON/OFF 제어)</strong> — 켜면 학생 화면에 5분 카운트다운 타이머가 표시되고, 끄면 숨겨집니다(Disabled).
+              </span>
+            </label>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -224,18 +235,22 @@ export function renderTeacherDashboardView() {
         </div>
       </div>
 
-      <!-- 20-Point Rubric Grading Modal -->
+      <!-- 20-Point Rubric Grading Modal with Side-by-Side Comparison -->
       <div id="rubric-modal" class="modal-backdrop hidden">
-        <div class="modal-card" style="max-width: 650px;">
+        <div class="modal-card" style="max-width: 860px;">
           <div class="modal-header">
             <h3 id="rubric-student-name"><i class="fa-solid fa-pen-ruler"></i> 20점 만점 루브릭 채점표</h3>
             <button id="btn-close-rubric" class="btn-icon"><i class="fa-solid fa-xmark"></i></button>
           </div>
           
           <div class="modal-body">
+            <!-- Side-by-Side Thought Shift Comparison Box (Requirement 4) -->
             <div class="rubric-preview-box">
-              <h4 style="margin-bottom: 0.5rem; color: #0f172a;"><i class="fa-solid fa-eye"></i> 학생 사고 흔적 제출 내용</h4>
-              <div id="rubric-preview-content" style="font-size: 0.88rem; line-height: 1.5; color: #334155; background: #f8fafc; padding: 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+              <h4 style="margin-bottom: 0.65rem; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-right-left" style="color: #6366f1;"></i>
+                <span>학생 사고 변화 Side-by-Side 비교 뷰 (AI 탐구 전 vs 후)</span>
+              </h4>
+              <div id="rubric-preview-content"></div>
             </div>
 
             <form id="form-rubric-grade" style="margin-top: 1.25rem;">
@@ -245,7 +260,7 @@ export function renderTeacherDashboardView() {
                 <div class="rubric-label-box">
                   <label for="rubric-self-score">
                     <strong>1. 학생 자기점검 평가 (10점 만점)</strong>
-                    <div class="rubric-desc">작성 충실도 및 AI 피드백 요약 수준 자기 평가</div>
+                    <div class="rubric-desc">학생 스스로 수행한 자기점검 체크리스트 결과 점수</div>
                   </label>
                 </div>
                 <div class="rubric-input-box">
@@ -333,13 +348,14 @@ export function renderTeacherDashboardView() {
       const subject = container.querySelector('#ass-subject').value;
       const unit = container.querySelector('#ass-unit').value;
       const prompt = container.querySelector('#ass-prompt').value;
+      const timerEnabled = container.querySelector('#ass-timer-enabled').checked;
 
       if (!subject || !unit || !prompt) {
         window.showToast('교과목, 단원명, 과제 질문을 모두 입력해주세요.', 'error');
         return;
       }
 
-      const newAss = store.createAssignment(subject, unit, prompt);
+      const newAss = store.createAssignment(subject, unit, prompt, timerEnabled);
       selectedTabId = newAss.id;
       window.showToast(`새 과제 [${unit}]로 저장되고 학생 화면에 배포되었습니다!`, 'success');
       renderView();
@@ -351,18 +367,20 @@ export function renderTeacherDashboardView() {
       const subject = container.querySelector('#ass-subject').value;
       const unit = container.querySelector('#ass-unit').value;
       const prompt = container.querySelector('#ass-prompt').value;
+      const timerEnabled = container.querySelector('#ass-timer-enabled').checked;
 
       if (isNewMode) {
-        const newAss = store.createAssignment(subject, unit, prompt);
+        const newAss = store.createAssignment(subject, unit, prompt, timerEnabled);
         selectedTabId = newAss.id;
         window.showToast(`새 과제 [${unit}]가 출제되고 실시간 배포되었습니다!`, 'success');
       } else {
         currentSelectedAss.subject = subject.trim();
         currentSelectedAss.unit = unit.trim();
         currentSelectedAss.prompt = prompt.trim();
+        currentSelectedAss.timerEnabled = timerEnabled;
         currentSelectedAss.sheetName = unit.trim().replace(/[\/\?\\*\:\[\]]/g, '_').substring(0, 30);
         store.setActiveAssignment(currentSelectedAss.id);
-        window.showToast(`과제 [${unit}] 내용이 수정 및 배포되었습니다!`, 'success');
+        window.showToast(`과제 [${unit}] 내용 및 타이머 설정이 수정/배포되었습니다!`, 'success');
       }
       renderView();
     });
@@ -372,7 +390,7 @@ export function renderTeacherDashboardView() {
       renderView();
     });
 
-    // Rubric Modal Logic
+    // Rubric Modal Logic & Side-by-Side Render
     const rubricModal = container.querySelector('#rubric-modal');
     const btnCloseRubric = container.querySelector('#btn-close-rubric');
     const selfScoreInput = container.querySelector('#rubric-self-score');
@@ -397,12 +415,35 @@ export function renderTeacherDashboardView() {
         container.querySelector('#rubric-student-id').value = item.studentId;
         container.querySelector('#rubric-student-name').innerText = `${item.studentId} ${item.name} 학생 루브릭 채점`;
         
+        // Render Side-by-Side Comparison Layout
         container.querySelector('#rubric-preview-content').innerHTML = `
-          <p><strong>과제:</strong> [${currentSelectedAss.subject}] ${currentSelectedAss.unit}</p>
-          <p style="margin-top:0.4rem;"><strong>1. Before AI:</strong> ${item.beforeAi}</p>
-          <p style="margin-top:0.4rem;"><strong>2. My Question:</strong> ${item.myQuestion}</p>
-          <p style="margin-top:0.4rem;"><strong>3. AI 답변 요약:</strong> ${item.studentSummary || item.aiSupport}</p>
-          <p style="margin-top:0.4rem;"><strong>4. My Choice:</strong> ${item.myChoice}</p>
+          <div class="side-by-side-grid">
+            <div class="side-box before-ai-box">
+              <div class="side-box-header">
+                <span class="step-badge sec-1">1구역</span>
+                <strong>Before AI (탐구 전 초기 생각)</strong>
+              </div>
+              <div class="side-box-content">${item.beforeAi ? item.beforeAi.replace(/\n/g, '<br>') : '<span class="text-muted">내용 없음</span>'}</div>
+            </div>
+
+            <div class="side-box my-choice-box">
+              <div class="side-box-header">
+                <span class="step-badge sec-4">4구역</span>
+                <strong>My Choice (AI 탐구 후 최종 선택 및 이유)</strong>
+              </div>
+              <div class="side-box-content">${item.myChoice ? item.myChoice.replace(/\n/g, '<br>') : '<span class="text-muted">내용 없음</span>'}</div>
+            </div>
+          </div>
+
+          <details class="trace-details-accordion" style="margin-top: 0.85rem;">
+            <summary style="cursor: pointer; font-size: 0.85rem; font-weight: 700; color: #475569; user-select: none;">
+              <i class="fa-solid fa-chevron-down"></i> 2구역(질문) 및 3구역(AI 답변 요약) 보기
+            </summary>
+            <div class="details-content" style="margin-top: 0.5rem; font-size: 0.85rem; line-height: 1.5; color: #334155; background: #ffffff; padding: 0.85rem; border-radius: 8px; border: 1px solid #cbd5e1;">
+              <p><strong>2구역 (My Question):</strong> ${item.myQuestion || '-'}</p>
+              <p style="margin-top: 0.4rem;"><strong>3구역 (AI 답변 요약):</strong> ${item.studentSummary || item.aiSupport || '-'}</p>
+            </div>
+          </details>
         `;
 
         const rubric = item.rubric || { selfScore: 10, teacherScore: 10, teacherFeedback: '' };
